@@ -1,0 +1,21 @@
+[tools]
+go = "1.26.4"
+golangci-lint = "2.12.2"
+goreleaser = "2.16.0"
+zizmor = "1.26.1"
+
+[tasks.build]
+description = "Build the binary"
+run = "go build -o bin/whoami-oidc-decoder ./cmd/whoami-oidc-decoder"
+
+[tasks.test]
+description = "Run tests"
+run = "go test ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.zizmor]
+description = "Run zizmor against GitHub Actions workflows"
+run = "zizmor .github/workflows"
