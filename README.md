@@ -23,6 +23,58 @@ Configuration is via environment variables:
 | --- | --- | --- |
 | `PORT` | `8080` | HTTP listen port |
 
+## Configuring your reverse proxy
+
+This tool only ever sees what's in the request headers — it can't reach back
+into your identity provider. Most OIDC-auth middlewares forward a handful of
+individual claims as headers (username, email, groups, ...) but **not** the
+raw token itself, so put it behind a middleware that's configured to forward
+the ID token (or access token) as its own header, e.g. `X-Oidc-Id-Token`.
+The decoder detects any header whose value looks like a compact JWT (three
+dot-separated segments), plain or `Bearer <jwt>`, so the header name doesn't
+matter — just make sure one of them carries the actual token.
+
+Example for [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth)
+(Traefik plugin), forwarding claims *and* the raw ID token:
+
+```yaml
+http:
+  middlewares:
+    pocketid:
+      plugin:
+        traefik-oidc-auth:
+          Secret: {{ env "POCKETID_SESSION_KEY" }}
+          Provider:
+            Url: {{ env "POCKETID_URL" }}
+            ClientId: {{ env "POCKETID_PROXY_CLIENT_ID" }}
+            ClientSecret: {{ env "POCKETID_PROXY_CLIENT_SECRET" }}
+            UsePkce: true
+          # request every scope whose claims you want to inspect - claims
+          # not covered by a requested scope simply won't be in the token
+          Scopes: ["openid", "profile", "email", "groups"]
+          Headers:
+            - Name: X-Oidc-Username
+              Value: "{{ `{{ .claims.preferred_username }}` }}"
+            - Name: X-Oidc-Email
+              Value: "{{ `{{ .claims.email }}` }}"
+            - Name: X-Oidc-Groups
+              Value: "{{ `{{ .claims.groups }}` }}"
+            # the important part: forward the raw token so the decoder can
+            # show every claim in it, not just the ones mapped above
+            - Name: X-Oidc-Id-Token
+              Value: "{{ `{{ .idToken }}` }}"
+```
+
+Route this middleware to a `whoami-oidc-decoder` container/service the same
+way you route it to your real apps, then open that route in a browser after
+logging in — you'll see the individual mapped headers plus a `Decoded JWTs`
+section with the full JOSE header and every claim in the token.
+
+For other proxies (oauth2-proxy, Authentik forward-auth, etc.), the same
+principle applies: configure it to forward the ID token or access token as a
+plain header (or `Authorization: Bearer <token>`), then point it at this
+tool.
+
 ## Development
 
 Tooling is managed with [mise](https://mise.jdx.dev):
