@@ -2,7 +2,7 @@
 go = "1.26.4"
 golangci-lint = "2.15.0"
 goreleaser = "2.16.0"
-zizmor = "1.26.1"
+zizmor = "1.32.0"
 
 [tasks.build]
 description = "Build the binary"
